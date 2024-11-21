@@ -17,18 +17,13 @@ use lsp_types::CompletionItem;
 use lsp_types::CompletionItemKind;
 use lsp_types::CompletionList;
 use lsp_types::Diagnostic;
-use lsp_types::Documentation;
-use lsp_types::ExecuteCommandOptions;
 use lsp_types::InitializeParams;
 use lsp_types::InitializeResult;
 use lsp_types::MarkupContent;
-use lsp_types::Position;
 use lsp_types::PositionEncodingKind;
 use lsp_types::PublishDiagnosticsParams;
-use lsp_types::Range;
 use lsp_types::ServerCapabilities;
 use lsp_types::ServerInfo;
-use lsp_types::TextDocumentPositionParams;
 use lsp_types::TextDocumentSyncKind;
 use serde::Deserialize;
 use serde::Serialize;
@@ -342,7 +337,8 @@ impl Server {
             value: icalls::properties::properties()
                 .into_iter()
                 .find(|p| p.name() == ci.label)
-                .map(|p| render_property(p)).unwrap_or_default(),
+                .map(render_property)
+                .unwrap_or_default(),
         }));
         let response = response_ok(request.id, ci);
 
@@ -351,11 +347,6 @@ impl Server {
 
     fn handle_code_action_request(&mut self, request: Request) -> Vec<Message> {
         let cap = serde_json::from_value::<lsp_types::CodeActionParams>(request.params).unwrap();
-
-        let tdp = TextDocumentPositionParams {
-            text_document: cap.text_document,
-            position: cap.range.start,
-        };
 
         // let action_list = Vec::new();
         // let response = response_ok(request.id, action_list);
