@@ -17,6 +17,7 @@ use lsp_types::CompletionItem;
 use lsp_types::CompletionItemKind;
 use lsp_types::CompletionList;
 use lsp_types::Diagnostic;
+use lsp_types::DiagnosticSeverity;
 use lsp_types::InitializeParams;
 use lsp_types::InitializeResult;
 use lsp_types::MarkupContent;
@@ -454,7 +455,39 @@ impl Server {
     }
 
     fn refresh_diagnostics(&mut self, file: &str) -> Vec<Diagnostic> {
-        Vec::new()
+        let content = self.open_files.get(file);
+        let mut diagnostics = Vec::new();
+        for (lineno, line) in content.lines().enumerate() {
+            if line.starts_with(" ") {
+                continue;
+            }
+            let property_end = line.find(":").unwrap_or(line.len());
+            let property_part = &line[..property_end];
+            let property_end = property_part.find(";").unwrap_or(property_part.len());
+            let property = &property_part[..property_end];
+            if !icalls::properties::properties()
+                .iter()
+                .any(|p| p.name() == property)
+            {
+                // unknown property
+                diagnostics.push(Diagnostic {
+                    range: lsp_types::Range {
+                        start: lsp_types::Position {
+                            line: lineno as u32,
+                            character: 0,
+                        },
+                        end: lsp_types::Position {
+                            line: lineno as u32,
+                            character: property_end as u32,
+                        },
+                    },
+                    severity: Some(DiagnosticSeverity::WARNING),
+                    message: format!("Unknown property {:?}", property),
+                    ..Default::default()
+                });
+            }
+        }
+        diagnostics
     }
 }
 
