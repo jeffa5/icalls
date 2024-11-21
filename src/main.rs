@@ -554,7 +554,7 @@ fn main() {
 fn render_property(property: &dyn Property) -> String {
     let mut lines = Vec::new();
     lines.push(format!("# {}", property.name()));
-    lines.push(format!("_{}_", property.value_type()));
+    lines.push(format!("_{:?}_", property.value_type()));
     lines.push(property.purpose().to_owned());
     if !property.examples().is_empty() {
         let mut examples = Vec::new();
