@@ -1,3 +1,7 @@
+use strum::IntoEnumIterator as _;
+
+use crate::ast;
+
 pub trait Property {
     fn name(&self) -> &'static str;
     fn purpose(&self) -> &'static str;
@@ -8,9 +12,7 @@ pub trait Property {
 }
 
 pub fn properties() -> Vec<&'static dyn Property> {
-    vec![
-        &Begin, &End, &Version, &DTStart, &DTEnd, &Uid, &Summary, &Status, &Location,
-    ]
+    ast::PropertyName::iter().map(|pn| pn.to_property()).collect()
 }
 
 #[derive(Debug)]
@@ -200,6 +202,408 @@ ValueType::Text,
     "location"
 }
 
+property! {
+    CalScale,
+    "CALSCALE",
+    "This property defines the calendar scale used for the calendar information specified in the iCalendar object.",
+    ValueType::Text,
+    "This memo is based on the Gregorian calendar scale. The Gregorian calendar scale is assumed if this property is not specified in the iCalendar object.  It is expected that other calendar scales will be defined in other specifications or by future versions of this memo.",
+    vec!["CALSCALE:GREGORIAN"],
+    "calscale"
+}
+
+property! {
+    Method,
+    "METHOD",
+    "This property defines the iCalendar object method associated with the calendar object.",
+    ValueType::Text,
+    "",
+    vec!["METHOD:REQUEST"],
+    "method"
+}
+
+property! {
+    ProdId,
+    "PRODID",
+    "This property specifies the identifier for the product that created the iCalendar object.",
+    ValueType::Text,
+    "",
+    vec!["PRODID:-//ABC Corporation//NONSGML My Product//EN"],
+    "prodid", "product identifier"
+}
+
+property! {
+    Attach,
+    "ATTACH",
+    "This property provides the capability to associate a document object with a calendar component.",
+    ValueType::Text,
+    "",
+    vec![ "ATTACH:CID:jsmith.part3.960817T083000.xyzMail@example.com",
+       "ATTACH;FMTTYPE=application/postscript:ftp://example.com/pub/reports/r-960812.ps"
+],
+    "attach"
+}
+
+property! {
+    Categories,
+    "CATEGORIES",
+    "This property defines the categories for a calendar component.",
+    ValueType::Text,
+    "",
+    vec!["CATEGORIES:APPOINTMENT,EDUCATION", "CATEGORIES:MEETING"],
+    "categories"
+}
+
+property! {
+    Class,
+    "CLASS",
+    "This property defines the access classification for a calendar component.",
+    ValueType::Text,
+    "",
+    vec!["CLASS:PUBLIC"],
+    "classification"
+}
+
+property! {
+    Comment,
+    "COMMENT",
+    "This property specifies non-processing information intended to provide a comment to the calendar user.",
+    ValueType::Text,
+    "",
+    vec![],
+    "comment"
+}
+
+property! {
+    Description,
+    "DESCRIPTION",
+    r#"This property provides a more complete description of the calendar component than that provided by the "SUMMARY" property."#,
+    ValueType::Text,
+    "",
+    vec![],
+    "description"
+}
+
+property! {
+    Geo,
+    "GEO",
+    "This property specifies information related to the global position for the activity specified by a calendar component.",
+    ValueType::Float,
+    "",
+    vec![],
+    "geographic position"
+}
+
+property! {
+    PercentComplete,
+    "PERCENT-COMPLETE",
+    r#"This property is used by an assignee or delegatee of a to-do to convey the percent completion of a to-do to the "Organizer"."#,
+    ValueType::Integer,
+    "",
+    vec![],
+    "percent complete"
+}
+
+property! {
+    Priority,
+    "PRIORITY",
+    "This property defines the relative priority for a calendar component.",
+    ValueType::Integer,
+    "",
+    vec![],
+    "priority"
+}
+
+property! {
+    Resources,
+    "RESOURCES",
+    "This property defines the equipment or resources anticipated for an activity specified by a calendar component.",
+    ValueType::Text,
+    "",
+    vec!["RESOURCES:EASEL,PROJECTOR,VCR"],
+    "resources"
+}
+
+property! {
+    Completed,
+    "COMPLETED",
+    "This property defines the date and time that a to-do was actually completed.",
+    ValueType::DateTime,
+    "",
+    vec!["COMPLETED:19960401T150000Z"],
+    "completed", "done"
+}
+
+property! {
+    DtEnd,
+    "DTEND",
+    "This property specifies the date and time that a calendar component ends.",
+    ValueType::DateTime,
+    "",
+    vec!["DTEND:19960401T150000Z","DTEND;VALUE=DATE:19980704"],
+    "dtend"
+}
+
+property! {
+    Due,
+    "DUE",
+    "This property defines the date and time that a to-do is expected to be completed.",
+    ValueType::DateTime,
+    "",
+    vec!["DUE:19980430T000000Z"],
+    "due"
+}
+
+property! {
+    DtStart,
+    "DTSTART",
+    "This property specifies when the calendar component begins.",
+    ValueType::DateTime,
+    "",
+    vec!["DTSTART:19980118T073000Z"],
+    "dtstart"
+}
+
+property! {
+    Duration,
+    "DURATION",
+    "This property specifies a positive duration of time.",
+    ValueType::Duration,
+    "",
+    vec!["DURATION:PT1H0M0S"],
+    "duration"
+}
+
+property! {
+    FreeBusy,
+    "FREEBUSY",
+    "This property defines one or more free or busy time intervals.",
+    ValueType::PeriodOfTime,
+    "",
+    vec!["FREEBUSY;FBTYPE=BUSY-UNAVAILABLE:19970308T160000Z/PT8H30M"],
+    "freebusy"
+}
+
+property! {
+    Transp,
+    "TRANSP",
+    "This property defines whether or not an event is transparent to busy time searches.",
+    ValueType::Text,
+    "",
+    vec!["TRANSP:TRANSPARENT", "TRANSP:OPAQUE"],
+    "transparency", "transparent", "opaque"
+}
+
+property! {
+    TzId,
+    "TZID",
+    r#"This property specifies the text value that uniquely identifies the "VTIMEZONE" calendar component in the scope of an iCalendar object."#,
+    ValueType::Text,
+    "",
+    vec!["TZID:America/New_York"],
+    "tzid", "timezone identifier"
+}
+
+property! {
+    TzName,
+    "TZNAME",
+    "This property specifies the customary designation for a time zone description.",
+    ValueType::Text,
+    "",
+    vec![],
+    "tzname"
+}
+
+property! {
+    TzOffsetFrom,
+    "TZOFFSETFROM",
+    "This property specifies the offset that is in use prior to this time zone observance.",
+    ValueType::Text,
+    "",
+    vec![],
+    "tzoffsetfrom"
+}
+
+property! {
+    TzOffsetTo,
+    "TZOFFSETTO",
+    "This property specifies the offset that is in use in this time zone observance.",
+    ValueType::Text,
+    "",
+    vec![],
+    "tzoffsetto"
+}
+
+property! {
+    TzUrl,
+    "TZURL",
+    r#"This property provides a means for a "VTIMEZONE" component to point to a network location that can be used to retrieve an up- to-date version of itself."#,
+    ValueType::Uri,
+    "",
+    vec![],
+    "tzurl"
+}
+
+property! {
+    Attendee,
+    "ATTENDEE",
+    "",
+    ValueType::CalAddress,
+    "",
+    vec![],
+    "attendee"
+}
+
+property! {
+    Contact,
+    "CONTACT",
+    "",
+    ValueType::Text,
+    "",
+    vec![],
+    "contact"
+}
+
+property! {
+    Organizer,
+    "ORGANIZER",
+    "",
+    ValueType::CalAddress,
+    "",
+    vec![],
+    "organizer"
+}
+
+property! {
+    RecurrenceId,
+    "RECURRENCE-ID",
+    "",
+    ValueType::DateTime,
+    "",
+    vec![],
+    "recurrence-id"
+}
+
+property! {
+    RelatedTo,
+    "RELATED-TO",
+    "",
+    ValueType::Text,
+    "",
+    vec![],
+    "related-to"
+}
+
+property! {
+    Url,
+    "URL",
+    "",
+    ValueType::Uri,
+    "",
+    vec![],
+    "url"
+}
+
+property! {
+    ExDate,
+    "EXDATE",
+    "",
+    ValueType::DateTime,
+    "",
+    vec![],
+    "exdate"
+}
+
+property! {
+    RDate,
+    "RDATE",
+    "",
+    ValueType::DateTime,
+    "",
+    vec![],
+    "rdate"
+}
+
+property! {
+    RRule,
+    "RRULE",
+    "",
+    ValueType::RecurrenceRule,
+    "",
+    vec![],
+    "rrule"
+}
+
+property! {
+    Action,
+    "ACTION",
+    "",
+    ValueType::Text,
+    "",
+    vec![],
+    "action"
+}
+
+property! {
+    Repeat,
+    "REPEAT",
+    "",
+    ValueType::Integer,
+    "",
+    vec![],
+    "repeat"
+}
+
+property! {
+    Trigger,
+    "TRIGGER",
+    "",
+    ValueType::Duration,
+    "",
+    vec![],
+    "trigger"
+}
+
+property! {
+    Created,
+    "CREATED",
+    "",
+    ValueType::DateTime,
+    "",
+    vec![],
+    "created"
+}
+
+property! {
+    DtStamp,
+    "DTSTAMP",
+    "",
+    ValueType::DateTime,
+    "",
+    vec![],
+    "dtstamp"
+}
+
+property! {
+    LastModified,
+    "LAST-MODIFIED",
+    "",
+    ValueType::DateTime,
+    "",
+    vec![],
+    "last-modified"
+}
+
+property! {
+    Sequence,
+    "SEQUENCE",
+    "",
+    ValueType::Integer,
+    "",
+    vec![],
+    "sequence"
+}
+
 #[cfg(test)]
 mod tests {
     use expect_test::expect;
@@ -213,7 +617,8 @@ mod tests {
             .assert_eq(Summary.purpose());
         expect![[r#"
             Text
-        "#]].assert_debug_eq(&Summary.value_type());
+        "#]]
+        .assert_debug_eq(&Summary.value_type());
         expect![[r#"
             This property is used in the "VEVENT", "VTODO", and "VJOURNAL" calendar components to capture a short, one-line summary about the activity or journal entry.
 
@@ -222,7 +627,8 @@ mod tests {
             [
                 "SUMMARY:Department Party",
             ]
-        "#]].assert_debug_eq(&Summary.examples());
+        "#]]
+        .assert_debug_eq(&Summary.examples());
         expect![[r#"
             [
                 "summary",

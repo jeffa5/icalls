@@ -232,6 +232,18 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" ];
       };
+      "bytecount" = rec {
+        crateName = "bytecount";
+        version = "0.6.8";
+        edition = "2018";
+        sha256 = "1klqfjwn41fwmcqw4z03v6i4imgrf7lmf3b5s9v74hxir8hrps2w";
+        authors = [
+          "Andre Bogus <bogusandre@gmail.de>"
+          "Joshua Landau <joshua@landau.ws>"
+        ];
+        features = {
+        };
+      };
       "cfg-if" = rec {
         crateName = "cfg-if";
         version = "1.0.0";
@@ -609,6 +621,14 @@ rec {
             packageId = "lsp-types";
           }
           {
+            name = "nom";
+            packageId = "nom";
+          }
+          {
+            name = "nom_locate";
+            packageId = "nom_locate";
+          }
+          {
             name = "regex";
             packageId = "regex";
           }
@@ -620,6 +640,11 @@ rec {
           {
             name = "serde_json";
             packageId = "serde_json";
+          }
+          {
+            name = "strum";
+            packageId = "strum";
+            features = [ "derive" ];
           }
           {
             name = "thiserror";
@@ -1304,7 +1329,21 @@ rec {
           "std" = [ "alloc" ];
           "use_std" = [ "std" ];
         };
-        resolvedDefaultFeatures = [ "alloc" "std" ];
+        resolvedDefaultFeatures = [ "alloc" "std" "use_std" ];
+      };
+      "minimal-lexical" = rec {
+        crateName = "minimal-lexical";
+        version = "0.2.1";
+        edition = "2018";
+        sha256 = "16ppc5g84aijpri4jzv14rvcnslvlpphbszc7zzp6vfkddf4qdb8";
+        libName = "minimal_lexical";
+        authors = [
+          "Alex Huszagh <ahuszagh@gmail.com>"
+        ];
+        features = {
+          "default" = [ "std" ];
+        };
+        resolvedDefaultFeatures = [ "std" ];
       };
       "nohash-hasher" = rec {
         crateName = "nohash-hasher";
@@ -1319,6 +1358,69 @@ rec {
           "default" = [ "std" ];
         };
         resolvedDefaultFeatures = [ "default" "std" ];
+      };
+      "nom" = rec {
+        crateName = "nom";
+        version = "7.1.3";
+        edition = "2018";
+        sha256 = "0jha9901wxam390jcf5pfa0qqfrgh8li787jx2ip0yk5b8y9hwyj";
+        authors = [
+          "contact@geoffroycouprie.com"
+        ];
+        dependencies = [
+          {
+            name = "memchr";
+            packageId = "memchr";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "minimal-lexical";
+            packageId = "minimal-lexical";
+            usesDefaultFeatures = false;
+          }
+        ];
+        features = {
+          "default" = [ "std" ];
+          "std" = [ "alloc" "memchr/std" "minimal-lexical/std" ];
+        };
+        resolvedDefaultFeatures = [ "alloc" "default" "std" ];
+      };
+      "nom_locate" = rec {
+        crateName = "nom_locate";
+        version = "4.2.0";
+        edition = "2018";
+        sha256 = "1wx87c2pm84h63rb4rsjrqzgx574x1zy93av1jk3swdhag086g0y";
+        authors = [
+          "Florent FAYOLLE <florent.fayolle69@gmail.com>"
+          "Christopher Durham <cad97@cad97.com>"
+          "Valentin Lorentz <progval+git@progval.net>"
+        ];
+        dependencies = [
+          {
+            name = "bytecount";
+            packageId = "bytecount";
+          }
+          {
+            name = "memchr";
+            packageId = "memchr";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "nom";
+            packageId = "nom";
+            usesDefaultFeatures = false;
+          }
+        ];
+        features = {
+          "alloc" = [ "nom/alloc" ];
+          "default" = [ "std" ];
+          "generic-simd" = [ "bytecount/generic-simd" ];
+          "runtime-dispatch-simd" = [ "bytecount/runtime-dispatch-simd" ];
+          "stable-deref-trait" = [ "stable_deref_trait" ];
+          "stable_deref_trait" = [ "dep:stable_deref_trait" ];
+          "std" = [ "nom/std" "alloc" "memchr/use_std" ];
+        };
+        resolvedDefaultFeatures = [ "alloc" "default" "std" ];
       };
       "once_cell" = rec {
         crateName = "once_cell";
@@ -1532,6 +1634,18 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "std" "unicode" "unicode-age" "unicode-bool" "unicode-case" "unicode-gencat" "unicode-perl" "unicode-script" "unicode-segment" ];
       };
+      "rustversion" = rec {
+        crateName = "rustversion";
+        version = "1.0.17";
+        edition = "2018";
+        sha256 = "1mm3fckyvb0l2209in1n2k05sws5d9mpkszbnwhq3pkq8apjhpcm";
+        procMacro = true;
+        build = "build/build.rs";
+        authors = [
+          "David Tolnay <dtolnay@gmail.com>"
+        ];
+
+      };
       "ryu" = rec {
         crateName = "ryu";
         version = "1.0.5";
@@ -1715,6 +1829,69 @@ rec {
         authors = [
           "Danny Guo <danny@dannyguo.com>"
           "maxbachmann <oss@maxbachmann.de>"
+        ];
+
+      };
+      "strum" = rec {
+        crateName = "strum";
+        version = "0.26.3";
+        edition = "2018";
+        sha256 = "01lgl6jvrf4j28v5kmx9bp480ygf1nhvac8b4p7rcj9hxw50zv4g";
+        authors = [
+          "Peter Glotfelty <peter.glotfelty@microsoft.com>"
+        ];
+        dependencies = [
+          {
+            name = "strum_macros";
+            packageId = "strum_macros";
+            optional = true;
+          }
+        ];
+        devDependencies = [
+          {
+            name = "strum_macros";
+            packageId = "strum_macros";
+          }
+        ];
+        features = {
+          "default" = [ "std" ];
+          "derive" = [ "strum_macros" ];
+          "phf" = [ "dep:phf" ];
+          "strum_macros" = [ "dep:strum_macros" ];
+        };
+        resolvedDefaultFeatures = [ "default" "derive" "std" "strum_macros" ];
+      };
+      "strum_macros" = rec {
+        crateName = "strum_macros";
+        version = "0.26.4";
+        edition = "2018";
+        sha256 = "1gl1wmq24b8md527cpyd5bw9rkbqldd7k1h38kf5ajd2ln2ywssc";
+        procMacro = true;
+        authors = [
+          "Peter Glotfelty <peter.glotfelty@microsoft.com>"
+        ];
+        dependencies = [
+          {
+            name = "heck";
+            packageId = "heck";
+          }
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2";
+          }
+          {
+            name = "quote";
+            packageId = "quote";
+          }
+          {
+            name = "rustversion";
+            packageId = "rustversion";
+          }
+          {
+            name = "syn";
+            packageId = "syn 2.0.87";
+            features = [ "parsing" "extra-traits" ];
+          }
         ];
 
       };

@@ -8,7 +8,7 @@ use nom_locate::LocatedSpan;
 
 type Span<'a> = LocatedSpan<&'a str>;
 
-#[derive(Debug)]
+#[derive(Debug, strum::EnumIter)]
 pub enum PropertyName {
     // Meta properties, probably should be removed once this looks more like the nested structure
     Begin,
@@ -66,6 +66,60 @@ pub enum PropertyName {
     DtStamp,
     LastModified,
     Sequence,
+}
+
+impl PropertyName {
+    pub fn to_property(&self) -> &'static dyn crate::properties::Property {
+        match self {
+            PropertyName::Begin => &crate::properties::Begin,
+            PropertyName::End => &crate::properties::End,
+            PropertyName::CalScale => &crate::properties::CalScale,
+            PropertyName::Method => &crate::properties::Method,
+            PropertyName::ProdId => &crate::properties::ProdId,
+            PropertyName::Version => &crate::properties::Version,
+            PropertyName::Attach => &crate::properties::Attach,
+            PropertyName::Categories => &crate::properties::Categories,
+            PropertyName::Class => &crate::properties::Class,
+            PropertyName::Comment => &crate::properties::Comment,
+            PropertyName::Description => &crate::properties::Description,
+            PropertyName::Geo => &crate::properties::Geo,
+            PropertyName::Location => &crate::properties::Location,
+            PropertyName::PercentComplete => &crate::properties::PercentComplete,
+            PropertyName::Priority => &crate::properties::Priority,
+            PropertyName::Resources => &crate::properties::Resources,
+            PropertyName::Status => &crate::properties::Status,
+            PropertyName::Summary => &crate::properties::Summary,
+            PropertyName::Completed => &crate::properties::Completed,
+            PropertyName::DtEnd => &crate::properties::DtEnd,
+            PropertyName::Due => &crate::properties::Due,
+            PropertyName::DtStart => &crate::properties::DtStart,
+            PropertyName::Duration => &crate::properties::Duration,
+            PropertyName::FreeBusy => &crate::properties::FreeBusy,
+            PropertyName::Transp => &crate::properties::Transp,
+            PropertyName::TzId => &crate::properties::TzId,
+            PropertyName::TzName => &crate::properties::TzName,
+            PropertyName::TzOffsetFrom => &crate::properties::TzOffsetFrom,
+            PropertyName::TzOffsetTo => &crate::properties::TzOffsetTo,
+            PropertyName::TzUrl => &crate::properties::TzUrl,
+            PropertyName::Attendee => &crate::properties::Attendee,
+            PropertyName::Contact => &crate::properties::Contact,
+            PropertyName::Organizer => &crate::properties::Organizer,
+            PropertyName::RecurrenceId => &crate::properties::RecurrenceId,
+            PropertyName::RelatedTo => &crate::properties::RelatedTo,
+            PropertyName::Url => &crate::properties::Url,
+            PropertyName::Uid => &crate::properties::Uid,
+            PropertyName::ExDate => &crate::properties::ExDate,
+            PropertyName::RDate => &crate::properties::RDate,
+            PropertyName::RRule => &crate::properties::RRule,
+            PropertyName::Action => &crate::properties::Action,
+            PropertyName::Repeat => &crate::properties::Repeat,
+            PropertyName::Trigger => &crate::properties::Trigger,
+            PropertyName::Created => &crate::properties::Created,
+            PropertyName::DtStamp => &crate::properties::DtStamp,
+            PropertyName::LastModified => &crate::properties::LastModified,
+            PropertyName::Sequence => &crate::properties::Sequence,
+        }
+    }
 }
 
 impl FromStr for PropertyName {
