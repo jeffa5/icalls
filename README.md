@@ -6,9 +6,17 @@ A tool to help with writing icalendar files.
 
 - [x] `hover` on properties
     - gradually adding more properties
+    - gradually adding more parameters
+    - [ ] datetime pretty view
 - [x] completion for properties
     - gradually adding more properties
-- [ ] diagnostics for unknown properties
+- [ ] diagnostics
+    - warn for
+        - [x] unknown properties
+        - [x] unknown parameters
+    - info for
+        - [ ] all day event
+
 
 ## Installation
 
