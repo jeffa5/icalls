@@ -12,7 +12,9 @@ pub trait Property {
 }
 
 pub fn properties() -> Vec<&'static dyn Property> {
-    ast::PropertyName::iter().map(|pn| pn.to_property()).collect()
+    ast::PropertyName::iter()
+        .map(|pn| pn.to_property())
+        .collect()
 }
 
 #[derive(Debug)]
