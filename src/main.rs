@@ -504,9 +504,8 @@ impl Server {
         for property in ast {
             if property.name.is_none() {
                 let line = property.name_raw.location_line() - 1;
-                let character_start = property.name_raw.get_utf8_column()-1;
+                let character_start = property.name_raw.get_utf8_column() - 1;
                 let character_end = character_start + property.name_raw.fragment().len();
-                eprintln!("{:?}", property.name_raw);
                 diagnostics.push(Diagnostic {
                     range: lsp_types::Range {
                         start: lsp_types::Position {
@@ -523,38 +522,30 @@ impl Server {
                     ..Default::default()
                 });
             }
+            for parameter in property.params {
+                if parameter.name.is_none() {
+                    let line = parameter.name_raw.location_line() - 1;
+                    let character_start = parameter.name_raw.get_utf8_column() - 1;
+                    let character_end = character_start + parameter.name_raw.fragment().len();
+                    diagnostics.push(Diagnostic {
+                        range: lsp_types::Range {
+                            start: lsp_types::Position {
+                                line,
+                                character: character_start as u32,
+                            },
+                            end: lsp_types::Position {
+                                line,
+                                character: character_end as u32,
+                            },
+                        },
+                        severity: Some(DiagnosticSeverity::WARNING),
+                        message: format!("Unknown parameter {:?}", parameter.name_raw.fragment()),
+                        ..Default::default()
+                    });
+                }
+            }
         }
 
-        // for (lineno, line) in content.lines().enumerate() {
-        //     if line.starts_with(" ") {
-        //         continue;
-        //     }
-        //     let property_end = line.find(":").unwrap_or(line.len());
-        //     let property_part = &line[..property_end];
-        //     let property_end = property_part.find(";").unwrap_or(property_part.len());
-        //     let property = &property_part[..property_end];
-        //     if !icalls::properties::properties()
-        //         .iter()
-        //         .any(|p| p.name() == property)
-        //     {
-        //         // unknown property
-        //         diagnostics.push(Diagnostic {
-        //             range: lsp_types::Range {
-        //                 start: lsp_types::Position {
-        //                     line: lineno as u32,
-        //                     character: 0,
-        //                 },
-        //                 end: lsp_types::Position {
-        //                     line: lineno as u32,
-        //                     character: property_end as u32,
-        //                 },
-        //             },
-        //             severity: Some(DiagnosticSeverity::WARNING),
-        //             message: format!("Unknown property {:?}", property),
-        //             ..Default::default()
-        //         });
-        //     }
-        // }
         diagnostics
     }
 }

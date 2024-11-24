@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use nom::bytes::complete::{tag, take_till};
 use nom::character::complete::line_ending;
 use nom::combinator::{opt, peek};
@@ -66,10 +68,10 @@ pub enum PropertyName {
     Sequence,
 }
 
-impl TryFrom<&str> for PropertyName {
-    type Error = ();
+impl FromStr for PropertyName {
+    type Err = ();
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value.to_lowercase().as_str() {
             "begin" => Ok(Self::Begin),
             "end" => Ok(Self::End),
@@ -124,10 +126,71 @@ impl TryFrom<&str> for PropertyName {
 }
 
 #[derive(Debug)]
+pub enum ParameterName {
+    AltRep,
+    CN,
+    CUType,
+    DelegatedFrom,
+    DelegatedTo,
+    Dir,
+    Encoding,
+    FmtType,
+    FBType,
+    Language,
+    Member,
+    PartStat,
+    Range,
+    Related,
+    RelType,
+    Role,
+    RSVP,
+    SentBy,
+    TZId,
+    Value,
+}
+
+impl FromStr for ParameterName {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "altrep" => Ok(Self::AltRep),
+            "cn" => Ok(Self::CN),
+            "cutype" => Ok(Self::CUType),
+            "delegated-from" => Ok(Self::DelegatedFrom),
+            "delegated-to" => Ok(Self::DelegatedTo),
+            "dir" => Ok(Self::Dir),
+            "encoding" => Ok(Self::Encoding),
+            "fmttype" => Ok(Self::FmtType),
+            "fbtype" => Ok(Self::FBType),
+            "language" => Ok(Self::Language),
+            "member" => Ok(Self::Member),
+            "partstat" => Ok(Self::PartStat),
+            "range" => Ok(Self::Range),
+            "related" => Ok(Self::Related),
+            "reltype" => Ok(Self::RelType),
+            "role" => Ok(Self::Role),
+            "rsvp" => Ok(Self::RSVP),
+            "sent-by" => Ok(Self::SentBy),
+            "tzid" => Ok(Self::TZId),
+            "value" => Ok(Self::Value),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Parameter<'a> {
+    pub name_raw: Span<'a>,
+    pub name: Option<ParameterName>,
+    pub value: Span<'a>,
+}
+
+#[derive(Debug)]
 pub struct Property<'a> {
     pub name_raw: Span<'a>,
     pub name: Option<PropertyName>,
-    pub params: Vec<(Span<'a>, Span<'a>)>,
+    pub params: Vec<Parameter<'a>>,
     pub value: Span<'a>,
 }
 
@@ -144,7 +207,7 @@ pub fn parse_properties(s: Span) -> IResult<Span, Vec<Property>> {
 
 pub fn parse_property(s: Span) -> IResult<Span, Property> {
     let (s, name_raw) = take_till(|c| c == ';' || c == ':')(s)?;
-    let name = PropertyName::try_from(*name_raw.fragment()).ok();
+    let name = PropertyName::from_str(name_raw.fragment()).ok();
     let mut params = Vec::new();
     let mut sc = s;
     loop {
@@ -158,7 +221,11 @@ pub fn parse_property(s: Span) -> IResult<Span, Property> {
             let (s, _) = tag("=")(s)?;
             let (s, param_value) = take_till(|c| c == ';' || c == ':')(s)?;
             sc = s;
-            params.push((param_name, param_value));
+            params.push(Parameter {
+                name_raw: param_name,
+                name: ParameterName::from_str(param_name.fragment()).ok(),
+                value: param_value,
+            });
         } else {
             break;
         }
@@ -202,7 +269,9 @@ mod tests {
                             fragment: "BEGIN",
                             extra: (),
                         },
-                        name: None,
+                        name: Some(
+                            Begin,
+                        ),
                         params: [],
                         value: LocatedSpan {
                             offset: 6,
@@ -239,20 +308,23 @@ mod tests {
                             DtStart,
                         ),
                         params: [
-                            (
-                                LocatedSpan {
+                            Parameter {
+                                name_raw: LocatedSpan {
                                     offset: 8,
                                     line: 1,
                                     fragment: "TZID",
                                     extra: (),
                                 },
-                                LocatedSpan {
+                                name: Some(
+                                    TZId,
+                                ),
+                                value: LocatedSpan {
                                     offset: 13,
                                     line: 1,
                                     fragment: "Europe/London",
                                     extra: (),
                                 },
-                            ),
+                            },
                         ],
                         value: LocatedSpan {
                             offset: 27,
@@ -288,7 +360,9 @@ mod tests {
                                 fragment: "BEGIN",
                                 extra: (),
                             },
-                            name: None,
+                            name: Some(
+                                Begin,
+                            ),
                             params: [],
                             value: LocatedSpan {
                                 offset: 6,
@@ -308,20 +382,23 @@ mod tests {
                                 DtStart,
                             ),
                             params: [
-                                (
-                                    LocatedSpan {
+                                Parameter {
+                                    name_raw: LocatedSpan {
                                         offset: 24,
                                         line: 2,
                                         fragment: "TZID",
                                         extra: (),
                                     },
-                                    LocatedSpan {
+                                    name: Some(
+                                        TZId,
+                                    ),
+                                    value: LocatedSpan {
                                         offset: 29,
                                         line: 2,
                                         fragment: "Europe/London",
                                         extra: (),
                                     },
-                                ),
+                                },
                             ],
                             value: LocatedSpan {
                                 offset: 43,
@@ -337,7 +414,9 @@ mod tests {
                                 fragment: "END",
                                 extra: (),
                             },
-                            name: None,
+                            name: Some(
+                                End,
+                            ),
                             params: [],
                             value: LocatedSpan {
                                 offset: 63,
