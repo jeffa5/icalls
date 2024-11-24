@@ -1,4 +1,5 @@
 use clap::Parser;
+use icalls::ast::parse_properties;
 use icalls::properties::Property;
 use icalls::OpenFiles;
 use lsp_server::ErrorCode;
@@ -21,11 +22,14 @@ use lsp_types::DiagnosticSeverity;
 use lsp_types::InitializeParams;
 use lsp_types::InitializeResult;
 use lsp_types::MarkupContent;
+use lsp_types::Position;
 use lsp_types::PositionEncodingKind;
 use lsp_types::PublishDiagnosticsParams;
+use lsp_types::Range;
 use lsp_types::ServerCapabilities;
 use lsp_types::ServerInfo;
 use lsp_types::TextDocumentSyncKind;
+use nom_locate::LocatedSpan;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -456,37 +460,101 @@ impl Server {
 
     fn refresh_diagnostics(&mut self, file: &str) -> Vec<Diagnostic> {
         let content = self.open_files.get(file);
-        let mut diagnostics = Vec::new();
-        for (lineno, line) in content.lines().enumerate() {
-            if line.starts_with(" ") {
-                continue;
+        let (_, ast) = match parse_properties(LocatedSpan::new(content)) {
+            Ok(ast) => ast,
+            Err(nom::Err::Error(err)) => {
+                return vec![Diagnostic {
+                    range: Range {
+                        start: Position {
+                            line: err.input.location_line(),
+                            character: 0,
+                        },
+                        end: Position {
+                            line: err.input.location_line(),
+                            character: 0,
+                        },
+                    },
+                    severity: Some(DiagnosticSeverity::ERROR),
+                    message: err.to_string(),
+                    ..Default::default()
+                }]
             }
-            let property_end = line.find(":").unwrap_or(line.len());
-            let property_part = &line[..property_end];
-            let property_end = property_part.find(";").unwrap_or(property_part.len());
-            let property = &property_part[..property_end];
-            if !icalls::properties::properties()
-                .iter()
-                .any(|p| p.name() == property)
-            {
-                // unknown property
+            Err(nom::Err::Failure(err)) => {
+                return vec![Diagnostic {
+                    range: Range {
+                        start: Position {
+                            line: err.input.location_line(),
+                            character: 0,
+                        },
+                        end: Position {
+                            line: err.input.location_line(),
+                            character: 0,
+                        },
+                    },
+                    severity: Some(DiagnosticSeverity::ERROR),
+                    message: err.to_string(),
+                    ..Default::default()
+                }]
+            }
+            Err(nom::Err::Incomplete(_)) => {
+                unreachable!()
+            }
+        };
+        let mut diagnostics = Vec::new();
+        for property in ast {
+            if property.name.is_none() {
+                let line = property.name_raw.location_line() - 1;
+                let character_start = property.name_raw.get_utf8_column()-1;
+                let character_end = character_start + property.name_raw.fragment().len();
+                eprintln!("{:?}", property.name_raw);
                 diagnostics.push(Diagnostic {
                     range: lsp_types::Range {
                         start: lsp_types::Position {
-                            line: lineno as u32,
-                            character: 0,
+                            line,
+                            character: character_start as u32,
                         },
                         end: lsp_types::Position {
-                            line: lineno as u32,
-                            character: property_end as u32,
+                            line,
+                            character: character_end as u32,
                         },
                     },
                     severity: Some(DiagnosticSeverity::WARNING),
-                    message: format!("Unknown property {:?}", property),
+                    message: format!("Unknown property {:?}", property.name_raw.fragment()),
                     ..Default::default()
                 });
             }
         }
+
+        // for (lineno, line) in content.lines().enumerate() {
+        //     if line.starts_with(" ") {
+        //         continue;
+        //     }
+        //     let property_end = line.find(":").unwrap_or(line.len());
+        //     let property_part = &line[..property_end];
+        //     let property_end = property_part.find(";").unwrap_or(property_part.len());
+        //     let property = &property_part[..property_end];
+        //     if !icalls::properties::properties()
+        //         .iter()
+        //         .any(|p| p.name() == property)
+        //     {
+        //         // unknown property
+        //         diagnostics.push(Diagnostic {
+        //             range: lsp_types::Range {
+        //                 start: lsp_types::Position {
+        //                     line: lineno as u32,
+        //                     character: 0,
+        //                 },
+        //                 end: lsp_types::Position {
+        //                     line: lineno as u32,
+        //                     character: property_end as u32,
+        //                 },
+        //             },
+        //             severity: Some(DiagnosticSeverity::WARNING),
+        //             message: format!("Unknown property {:?}", property),
+        //             ..Default::default()
+        //         });
+        //     }
+        // }
         diagnostics
     }
 }
@@ -576,6 +644,16 @@ mod tests {
 
     #[test]
     fn hover_render() {
-        expect![].assert_eq(&render_property(&Summary));
+        expect![[r#"
+            # SUMMARY
+
+            _Text_
+
+            This property defines a short summary or subject for the calendar component.
+
+            ## Examples
+
+            - SUMMARY:Department Party"#]]
+        .assert_eq(&render_property(&Summary));
     }
 }

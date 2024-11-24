@@ -211,9 +211,18 @@ mod tests {
         expect!["SUMMARY"].assert_eq(Summary.name());
         expect!["This property defines a short summary or subject for the calendar component."]
             .assert_eq(Summary.purpose());
-        expect!["TEXT"].assert_debug_eq(Summary.value_type());
-        expect![].assert_eq(Summary.description());
-        expect![].assert_debug_eq(&Summary.examples());
+        expect![[r#"
+            Text
+        "#]].assert_debug_eq(&Summary.value_type());
+        expect![[r#"
+            This property is used in the "VEVENT", "VTODO", and "VJOURNAL" calendar components to capture a short, one-line summary about the activity or journal entry.
+
+            This property is used in the "VALARM" calendar component to capture the subject of an EMAIL category of alarm."#]].assert_eq(Summary.description());
+        expect![[r#"
+            [
+                "SUMMARY:Department Party",
+            ]
+        "#]].assert_debug_eq(&Summary.examples());
         expect![[r#"
             [
                 "summary",
