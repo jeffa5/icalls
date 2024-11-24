@@ -1,6 +1,7 @@
 use clap::Parser;
 use icalls::ast;
 use icalls::ast::parse_properties;
+use icalls::parameters::Parameter;
 use icalls::properties::Property;
 use icalls::OpenFiles;
 use lsp_server::ErrorCode;
@@ -314,7 +315,7 @@ impl Server {
                 let pl = param.name_raw.fragment().len();
                 if (ps..(ps + pl)).contains(&(tdp.position.character as usize)) {
                     if let Some(name) = param.name {
-                        let text = format!("{:?}", name);
+                        let text = render_parameter(name.to_parameter());
                         let resp = lsp_types::Hover {
                             contents: lsp_types::HoverContents::Markup(lsp_types::MarkupContent {
                                 kind: lsp_types::MarkupKind::Markdown,
@@ -648,6 +649,22 @@ fn render_property(property: &dyn Property) -> String {
         let mut examples = Vec::new();
         examples.push("## Examples\n".to_owned());
         for example in property.examples() {
+            examples.push(format!("- {}", example));
+        }
+        lines.push(examples.join("\n"));
+    }
+    lines.join("\n\n")
+}
+
+fn render_parameter(parameter: &dyn Parameter) -> String {
+    let mut lines = Vec::new();
+    lines.push(format!("# {}", parameter.name()));
+    lines.push(format!("_{:?}_", parameter.value_type()));
+    lines.push(parameter.purpose().to_owned());
+    if !parameter.examples().is_empty() {
+        let mut examples = Vec::new();
+        examples.push("## Examples\n".to_owned());
+        for example in parameter.examples() {
             examples.push(format!("- {}", example));
         }
         lines.push(examples.join("\n"));

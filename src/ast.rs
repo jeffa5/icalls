@@ -179,7 +179,7 @@ impl FromStr for PropertyName {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, strum::EnumIter)]
 pub enum ParameterName {
     AltRep,
     CN,
@@ -201,6 +201,33 @@ pub enum ParameterName {
     SentBy,
     TZId,
     Value,
+}
+
+impl ParameterName {
+    pub fn to_parameter(&self) -> &'static dyn crate::parameters::Parameter {
+        match self {
+            ParameterName::AltRep => &crate::parameters::AltRep,
+            ParameterName::CN => &crate::parameters::CN,
+            ParameterName::CUType => &crate::parameters::CUType,
+            ParameterName::DelegatedFrom => &crate::parameters::DelegatedFrom,
+            ParameterName::DelegatedTo => &crate::parameters::DelegatedTo,
+            ParameterName::Dir => &crate::parameters::Dir,
+            ParameterName::Encoding => &crate::parameters::Encoding,
+            ParameterName::FmtType => &crate::parameters::FmtType,
+            ParameterName::FBType => &crate::parameters::FBType,
+            ParameterName::Language => &crate::parameters::Language,
+            ParameterName::Member => &crate::parameters::Member,
+            ParameterName::PartStat => &crate::parameters::PartStat,
+            ParameterName::Range => &crate::parameters::Range,
+            ParameterName::Related => &crate::parameters::Related,
+            ParameterName::RelType => &crate::parameters::RelType,
+            ParameterName::Role => &crate::parameters::Role,
+            ParameterName::RSVP => &crate::parameters::RSVP,
+            ParameterName::SentBy => &crate::parameters::SentBy,
+            ParameterName::TZId => &crate::parameters::TZId,
+            ParameterName::Value => &crate::parameters::Value,
+        }
+    }
 }
 
 impl FromStr for ParameterName {
