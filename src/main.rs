@@ -1,4 +1,5 @@
 use clap::Parser;
+use icalls::ast;
 use icalls::ast::parse_properties;
 use icalls::properties::Property;
 use icalls::OpenFiles;
@@ -277,30 +278,58 @@ impl Server {
         let tdp = serde_json::from_value::<lsp_types::TextDocumentPositionParams>(request.params)
             .unwrap();
 
-        let word = self.get_word_from_document(&tdp);
-        let response = if let Some(word) = word {
-            let lower_word = word.to_lowercase();
-            if let Some(property) = icalls::properties::properties()
-                .into_iter()
-                .find(|p| p.keywords().into_iter().any(|kw| *kw == lower_word))
-            {
-                let text = render_property(property);
-                let resp = lsp_types::Hover {
-                    contents: lsp_types::HoverContents::Markup(lsp_types::MarkupContent {
-                        kind: lsp_types::MarkupKind::Markdown,
-                        value: text,
-                    }),
-                    range: None,
-                };
-                response_ok(request.id, resp)
-            } else {
-                response_empty(request.id)
-            }
-        } else {
-            response_empty(request.id)
+        let content = self.open_files.get(tdp.text_document.uri.as_ref());
+        let Ok((_, ast)) = ast::parse_properties(LocatedSpan::new(content)) else {
+            return Vec::new();
         };
 
-        vec![response]
+        'outer: for property in ast {
+            if property.name_raw.location_line() - 1 < tdp.position.line {
+                continue;
+            }
+            if property.name_raw.location_line() - 1 > tdp.position.line {
+                break;
+            }
+
+            let ns = property.name_raw.get_utf8_column() - 1;
+            let nl = property.name_raw.fragment().len();
+            if (ns..(ns + nl)).contains(&(tdp.position.character as usize)) {
+                if let Some(name) = property.name {
+                    let text = render_property(name.to_property());
+                    let resp = lsp_types::Hover {
+                        contents: lsp_types::HoverContents::Markup(lsp_types::MarkupContent {
+                            kind: lsp_types::MarkupKind::Markdown,
+                            value: text,
+                        }),
+                        range: None,
+                    };
+                    return vec![response_ok(request.id, resp)];
+                } else {
+                    break;
+                }
+            }
+
+            for param in property.params {
+                let ps = param.name_raw.get_utf8_column() - 1;
+                let pl = param.name_raw.fragment().len();
+                if (ps..(ps + pl)).contains(&(tdp.position.character as usize)) {
+                    if let Some(name) = param.name {
+                        let text = format!("{:?}", name);
+                        let resp = lsp_types::Hover {
+                            contents: lsp_types::HoverContents::Markup(lsp_types::MarkupContent {
+                                kind: lsp_types::MarkupKind::Markdown,
+                                value: text,
+                            }),
+                            range: None,
+                        };
+                        return vec![response_ok(request.id, resp)];
+                    } else {
+                        break 'outer;
+                    }
+                }
+            }
+        }
+        vec![response_empty(request.id)]
     }
 
     fn handle_completion_request(&mut self, request: Request) -> Vec<Message> {
