@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use nom::bytes::complete::{tag, take_till};
+use nom::bytes::complete::{tag, take_till, take_while};
 use nom::character::complete::line_ending;
 use nom::combinator::{opt, peek};
 use nom::IResult;
@@ -264,7 +264,7 @@ impl FromStr for ParameterName {
 pub struct Parameter<'a> {
     pub name_raw: Span<'a>,
     pub name: Option<ParameterName>,
-    pub value: Span<'a>,
+    pub value: Option<Span<'a>>,
 }
 
 #[derive(Debug)]
@@ -272,7 +272,7 @@ pub struct Property<'a> {
     pub name_raw: Span<'a>,
     pub name: Option<PropertyName>,
     pub params: Vec<Parameter<'a>>,
-    pub value: Span<'a>,
+    pub value: Option<Span<'a>>,
 }
 
 pub fn parse_properties(s: Span) -> IResult<Span, Vec<Property>> {
@@ -298,22 +298,21 @@ pub fn parse_property(s: Span) -> IResult<Span, Property> {
         if has_params {
             // params
             let (s, _) = tag(";")(s)?;
-            let (s, param_name) = take_till(|c| c == '=')(s)?;
-            let (s, _) = tag("=")(s)?;
-            let (s, param_value) = take_till(|c| c == ';' || c == ':')(s)?;
+            let (s, parameter) = parse_parameter(s)?;
             sc = s;
-            params.push(Parameter {
-                name_raw: param_name,
-                name: ParameterName::from_str(param_name.fragment()).ok(),
-                value: param_value,
-            });
+            params.push(parameter);
         } else {
             break;
         }
     }
     let s = sc;
-    let (s, _) = tag(":")(s)?;
-    let (s, value) = take_till(|c| c == '\r' || c == '\n')(s)?;
+    let (s, colon) = opt(tag(":"))(s)?;
+    let (s, value) = if colon.is_some() {
+        let (s, value) = take_till(|c| c == '\r' || c == '\n')(s)?;
+        (s, Some(value))
+    } else {
+        (s, None)
+    };
     let (s, _) = opt(line_ending)(s)?;
     Ok((
         s,
@@ -322,6 +321,25 @@ pub fn parse_property(s: Span) -> IResult<Span, Property> {
             name,
             params,
             value,
+        },
+    ))
+}
+
+fn parse_parameter(s: Span) -> IResult<Span, Parameter> {
+    let (s, param_name) = take_while(|c: char| c.is_alphabetic() || c == '-')(s)?;
+    let (s, equals) = opt(tag("="))(s)?;
+    let (s, param_value) = if equals.is_some() {
+        let (s, value) = take_till(|c| c == ';' || c == ':')(s)?;
+        (s, Some(value))
+    } else {
+        (s, None)
+    };
+    Ok((
+        s,
+        Parameter {
+            name_raw: param_name,
+            name: ParameterName::from_str(param_name.fragment()).ok(),
+            value: param_value,
         },
     ))
 }
@@ -354,12 +372,14 @@ mod tests {
                             Begin,
                         ),
                         params: [],
-                        value: LocatedSpan {
-                            offset: 6,
-                            line: 1,
-                            fragment: "VCALENDAR",
-                            extra: (),
-                        },
+                        value: Some(
+                            LocatedSpan {
+                                offset: 6,
+                                line: 1,
+                                fragment: "VCALENDAR",
+                                extra: (),
+                            },
+                        ),
                     },
                 ),
             )
@@ -399,20 +419,24 @@ mod tests {
                                 name: Some(
                                     TZId,
                                 ),
-                                value: LocatedSpan {
-                                    offset: 13,
-                                    line: 1,
-                                    fragment: "Europe/London",
-                                    extra: (),
-                                },
+                                value: Some(
+                                    LocatedSpan {
+                                        offset: 13,
+                                        line: 1,
+                                        fragment: "Europe/London",
+                                        extra: (),
+                                    },
+                                ),
                             },
                         ],
-                        value: LocatedSpan {
-                            offset: 27,
-                            line: 1,
-                            fragment: "20221008T170000",
-                            extra: (),
-                        },
+                        value: Some(
+                            LocatedSpan {
+                                offset: 27,
+                                line: 1,
+                                fragment: "20221008T170000",
+                                extra: (),
+                            },
+                        ),
                     },
                 ),
             )
@@ -445,12 +469,14 @@ mod tests {
                                 Begin,
                             ),
                             params: [],
-                            value: LocatedSpan {
-                                offset: 6,
-                                line: 1,
-                                fragment: "VCALENDAR",
-                                extra: (),
-                            },
+                            value: Some(
+                                LocatedSpan {
+                                    offset: 6,
+                                    line: 1,
+                                    fragment: "VCALENDAR",
+                                    extra: (),
+                                },
+                            ),
                         },
                         Property {
                             name_raw: LocatedSpan {
@@ -473,20 +499,24 @@ mod tests {
                                     name: Some(
                                         TZId,
                                     ),
-                                    value: LocatedSpan {
-                                        offset: 29,
-                                        line: 2,
-                                        fragment: "Europe/London",
-                                        extra: (),
-                                    },
+                                    value: Some(
+                                        LocatedSpan {
+                                            offset: 29,
+                                            line: 2,
+                                            fragment: "Europe/London",
+                                            extra: (),
+                                        },
+                                    ),
                                 },
                             ],
-                            value: LocatedSpan {
-                                offset: 43,
-                                line: 2,
-                                fragment: "20221008T170000",
-                                extra: (),
-                            },
+                            value: Some(
+                                LocatedSpan {
+                                    offset: 43,
+                                    line: 2,
+                                    fragment: "20221008T170000",
+                                    extra: (),
+                                },
+                            ),
                         },
                         Property {
                             name_raw: LocatedSpan {
@@ -499,12 +529,14 @@ mod tests {
                                 End,
                             ),
                             params: [],
-                            value: LocatedSpan {
-                                offset: 63,
-                                line: 3,
-                                fragment: "VCALENDAR",
-                                extra: (),
-                            },
+                            value: Some(
+                                LocatedSpan {
+                                    offset: 63,
+                                    line: 3,
+                                    fragment: "VCALENDAR",
+                                    extra: (),
+                                },
+                            ),
                         },
                     ],
                 ),
@@ -513,5 +545,73 @@ mod tests {
         .assert_debug_eq(&parse_properties(Span::new(
             "BEGIN:VCALENDAR\nDTSTART;TZID=Europe/London:20221008T170000\nEND:VCALENDAR",
         )));
+    }
+
+    #[test]
+    fn incomplete_parameter() {
+        expect![[r#"
+            Ok(
+                (
+                    LocatedSpan {
+                        offset: 5,
+                        line: 1,
+                        fragment: ";",
+                        extra: (),
+                    },
+                    Parameter {
+                        name_raw: LocatedSpan {
+                            offset: 0,
+                            line: 1,
+                            fragment: "DTEND",
+                            extra: (),
+                        },
+                        name: None,
+                        value: None,
+                    },
+                ),
+            )
+        "#]]
+        .assert_debug_eq(&parse_parameter(Span::new("DTEND;")));
+    }
+
+    #[test]
+    fn incomplete_property() {
+        expect![[r#"
+            Ok(
+                (
+                    LocatedSpan {
+                        offset: 12,
+                        line: 1,
+                        fragment: "",
+                        extra: (),
+                    },
+                    Property {
+                        name_raw: LocatedSpan {
+                            offset: 0,
+                            line: 1,
+                            fragment: "DTEND",
+                            extra: (),
+                        },
+                        name: Some(
+                            DtEnd,
+                        ),
+                        params: [
+                            Parameter {
+                                name_raw: LocatedSpan {
+                                    offset: 6,
+                                    line: 1,
+                                    fragment: "incomp",
+                                    extra: (),
+                                },
+                                name: None,
+                                value: None,
+                            },
+                        ],
+                        value: None,
+                    },
+                ),
+            )
+        "#]]
+        .assert_debug_eq(&parse_property(Span::new("DTEND;incomp")));
     }
 }
