@@ -281,7 +281,7 @@ impl Server {
 
         let content = self.open_files.get(tdp.text_document.uri.as_ref());
         let Ok((_, ast)) = ast::parse_properties(LocatedSpan::new(content)) else {
-            return Vec::new();
+            return vec![response_empty(request.id)];
         };
 
         'outer: for property in ast {
@@ -338,11 +338,33 @@ impl Server {
             serde_json::from_value::<lsp_types::TextDocumentPositionParams>(request.params)
                 .unwrap();
 
-        tdp.position.character = tdp.position.character.saturating_sub(1);
-        let response = match self.get_word_from_document(&tdp) {
-            Some(word) => {
-                let lower_word = word.to_lowercase();
-                let limit = 100;
+        let limit = 100;
+
+        // tdp.position.character = tdp.position.character.saturating_sub(1);
+
+        let content = self.open_files.get(tdp.text_document.uri.as_ref());
+        let Ok((_, ast)) = ast::parse_properties(LocatedSpan::new(content)) else {
+            return vec![response_empty(request.id)];
+        };
+
+        'outer: for property in ast {
+            if property.name_raw.location_line() - 1 < tdp.position.line {
+                continue;
+            }
+            if property.name_raw.location_line() - 1 > tdp.position.line {
+                break;
+            }
+
+            let ns = property.name_raw.get_utf8_column() - 1;
+            let nl = property.name_raw.fragment().len();
+            if (ns..(ns + nl)).contains(&(tdp.position.character as usize)) {
+                let lower_word = property
+                    .name_raw
+                    .fragment()
+                    .chars()
+                    .take(tdp.position.character as usize - ns)
+                    .collect::<String>()
+                    .to_lowercase();
                 let completion_items: Vec<_> = icalls::properties::properties()
                     .into_iter()
                     .filter(|p| p.keywords().iter().any(|kw| kw.contains(&lower_word)))
@@ -356,12 +378,38 @@ impl Server {
                     is_incomplete: completion_items.len() == limit,
                     items: completion_items,
                 });
-                response_ok(request.id, resp)
+                return vec![response_ok(request.id, resp)];
             }
-            None => response_empty(request.id),
-        };
 
-        vec![response]
+            for param in property.params {
+                let ps = param.name_raw.get_utf8_column() - 1;
+                let pl = param.name_raw.fragment().len();
+                if (ps..(ps + pl)).contains(&(tdp.position.character as usize)) {
+                    let lower_word = param
+                        .name_raw
+                        .fragment()
+                        .chars()
+                        .take(tdp.position.character as usize - ns)
+                        .collect::<String>()
+                        .to_lowercase();
+                    let completion_items: Vec<_> = icalls::parameters::parameters()
+                        .into_iter()
+                        .filter(|p| p.keywords().iter().any(|kw| kw.contains(&lower_word)))
+                        .map(|p| CompletionItem {
+                            label: p.name().to_owned(),
+                            kind: Some(CompletionItemKind::TEXT),
+                            ..Default::default()
+                        })
+                        .collect();
+                    let resp = lsp_types::CompletionResponse::List(CompletionList {
+                        is_incomplete: completion_items.len() == limit,
+                        items: completion_items,
+                    });
+                    return vec![response_ok(request.id, resp)];
+                }
+            }
+        }
+        vec![response_empty(request.id)]
     }
 
     fn handle_resolve_completion_item_request(&mut self, request: Request) -> Vec<Message> {
