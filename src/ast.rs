@@ -11,7 +11,7 @@ type Span<'a> = LocatedSpan<&'a str>;
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum SyntaxKind {
     Property,
-    Parameter
+    Parameter,
 }
 
 #[derive(Debug, strum::EnumIter)]

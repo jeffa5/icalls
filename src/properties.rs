@@ -1,6 +1,6 @@
 use strum::IntoEnumIterator as _;
 
-use crate::ast;
+use crate::{ast, value::ValueType};
 
 pub trait Property {
     fn name(&self) -> &'static str;
@@ -15,24 +15,6 @@ pub fn properties() -> Vec<&'static dyn Property> {
     ast::PropertyName::iter()
         .map(|pn| pn.to_property())
         .collect()
-}
-
-#[derive(Debug)]
-pub enum ValueType {
-    Binary,
-    Boolean,
-    CalAddress,
-    Date,
-    DateTime,
-    Duration,
-    Float,
-    Integer,
-    PeriodOfTime,
-    RecurrenceRule,
-    Text,
-    Time,
-    Uri,
-    UtcOffset,
 }
 
 macro_rules! property {
