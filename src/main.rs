@@ -1,6 +1,7 @@
 use clap::Parser;
 use icalls::ast;
 use icalls::ast::parse_properties;
+use icalls::ast::SyntaxKind;
 use icalls::parameters::Parameter;
 use icalls::properties::Property;
 use icalls::OpenFiles;
@@ -340,14 +341,14 @@ impl Server {
 
         let limit = 100;
 
-        // tdp.position.character = tdp.position.character.saturating_sub(1);
+        tdp.position.character = tdp.position.character.saturating_sub(1);
 
         let content = self.open_files.get(tdp.text_document.uri.as_ref());
         let Ok((_, ast)) = ast::parse_properties(LocatedSpan::new(content)) else {
             return vec![response_empty(request.id)];
         };
 
-        'outer: for property in ast {
+        for property in ast {
             if property.name_raw.location_line() - 1 < tdp.position.line {
                 continue;
             }
@@ -371,6 +372,7 @@ impl Server {
                     .map(|p| CompletionItem {
                         label: p.name().to_owned(),
                         kind: Some(CompletionItemKind::TEXT),
+                        data: Some(serde_json::to_value(SyntaxKind::Property).unwrap()),
                         ..Default::default()
                     })
                     .collect();
@@ -398,6 +400,7 @@ impl Server {
                         .map(|p| CompletionItem {
                             label: p.name().to_owned(),
                             kind: Some(CompletionItemKind::TEXT),
+                            data: Some(serde_json::to_value(SyntaxKind::Parameter).unwrap()),
                             ..Default::default()
                         })
                         .collect();
@@ -415,13 +418,29 @@ impl Server {
     fn handle_resolve_completion_item_request(&mut self, request: Request) -> Vec<Message> {
         let mut ci = serde_json::from_value::<lsp_types::CompletionItem>(request.params).unwrap();
 
+        let value = match ci
+            .data
+            .as_ref()
+            .and_then(|d| serde_json::from_value::<SyntaxKind>(d.clone()).ok())
+        {
+            Some(v) => match v {
+                SyntaxKind::Property => icalls::properties::properties()
+                    .into_iter()
+                    .find(|p| p.name() == ci.label)
+                    .map(render_property)
+                    .unwrap_or_default(),
+                SyntaxKind::Parameter => icalls::parameters::parameters()
+                    .into_iter()
+                    .find(|p| p.name() == ci.label)
+                    .map(render_parameter)
+                    .unwrap_or_default(),
+            },
+            None => String::new(),
+        };
+
         ci.documentation = Some(lsp_types::Documentation::MarkupContent(MarkupContent {
             kind: lsp_types::MarkupKind::Markdown,
-            value: icalls::properties::properties()
-                .into_iter()
-                .find(|p| p.name() == ci.label)
-                .map(render_property)
-                .unwrap_or_default(),
+            value,
         }));
         let response = response_ok(request.id, ci);
 

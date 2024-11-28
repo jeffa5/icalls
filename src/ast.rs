@@ -8,6 +8,12 @@ use nom_locate::LocatedSpan;
 
 type Span<'a> = LocatedSpan<&'a str>;
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub enum SyntaxKind {
+    Property,
+    Parameter
+}
+
 #[derive(Debug, strum::EnumIter)]
 pub enum PropertyName {
     // Meta properties, probably should be removed once this looks more like the nested structure
