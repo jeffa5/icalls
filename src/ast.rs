@@ -281,6 +281,81 @@ pub struct Property<'a> {
     pub value: Option<Span<'a>>,
 }
 
+impl<'a> Property<'a> {
+    pub fn check_value_type(&self) -> Result<(), String> {
+        let Some(value) = self.value else {
+            return Ok(());
+        };
+        let Some(name) = &self.name else {
+            return Ok(());
+        };
+        let value_raw = value.fragment();
+        match name.to_property().value_type() {
+            crate::value::ValueType::Binary => Ok(()),
+            crate::value::ValueType::Boolean => {
+                if matches!(value_raw.to_lowercase().as_str(), "true" | "false") {
+                    Ok(())
+                } else {
+                    Err("Did not match \"true\" or \"false\"".to_owned())
+                }
+            }
+            crate::value::ValueType::CalAddress => {
+                if !value_raw.starts_with("mailto:") {
+                    return Err("Does not start with \"mailto:\"".to_owned());
+                }
+                if !value_raw.trim_start_matches("mailto:").contains("@") {
+                    return Err("Does not contain '@'".to_owned());
+                }
+                Ok(())
+            }
+            crate::value::ValueType::Date => check_date_type(value_raw),
+            crate::value::ValueType::DateTime => {
+                let Some((date, time)) = value_raw.split_once('T') else {
+                    return Err("Did not contain 'T'".to_owned());
+                };
+                check_date_type(date)?;
+                check_time_type(time)
+            }
+            crate::value::ValueType::Duration => Ok(()),
+            crate::value::ValueType::Float => f64::from_str(value_raw)
+                .map(|_| ())
+                .map_err(|e| e.to_string()),
+            crate::value::ValueType::Integer => i64::from_str(value_raw)
+                .map(|_| ())
+                .map_err(|e| e.to_string()),
+            crate::value::ValueType::PeriodOfTime => Ok(()),
+            crate::value::ValueType::RecurrenceRule => Ok(()),
+            crate::value::ValueType::Text => Ok(()),
+            crate::value::ValueType::Time => check_time_type(value_raw),
+            crate::value::ValueType::Uri => Ok(()),
+            crate::value::ValueType::UtcOffset => Ok(()),
+        }
+    }
+}
+
+fn check_date_type(s: &str) -> Result<(), String> {
+    if s.len() != 8 {
+        return Err("Length was not 8".to_owned());
+    }
+    if !s.chars().all(|c| c.is_numeric()) {
+        return Err("Not all characters are numeric".to_owned());
+    }
+    Ok(())
+}
+
+fn check_time_type(s: &str) -> Result<(), String> {
+    if !matches!(s.len(), 6 | 7) {
+        return Err("Length was not 6 or 7".to_owned());
+    }
+    if s.len() == 7 && !s.ends_with('Z') {
+        return Err("Length was 7 but did not end with 'Z'".to_owned());
+    }
+    if !s.chars().take(6).all(|c| c.is_numeric()) {
+        return Err("Not all of the first 6 characters were numeric".to_owned());
+    }
+    Ok(())
+}
+
 pub fn parse_properties(s: Span) -> IResult<Span, Vec<Property>> {
     let mut sc = s;
     let mut properties = Vec::new();

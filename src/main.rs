@@ -618,7 +618,33 @@ impl Server {
                     message: format!("Unknown property {:?}", property.name_raw.fragment()),
                     ..Default::default()
                 });
+            } else if let Some(value) = property.value {
+                let line = value.location_line() - 1;
+                let character_start = value.get_utf8_column() - 1;
+                let character_end = character_start + value.fragment().len();
+                if let Err(e) = property.check_value_type() {
+                    diagnostics.push(Diagnostic {
+                        range: lsp_types::Range {
+                            start: lsp_types::Position {
+                                line,
+                                character: character_start as u32,
+                            },
+                            end: lsp_types::Position {
+                                line,
+                                character: character_end as u32,
+                            },
+                        },
+                        severity: Some(DiagnosticSeverity::WARNING),
+                        message: format!(
+                            "Failed to match expected type: {:?}\n\n{}",
+                            property.name.unwrap().to_property().value_type(),
+                            e
+                        ),
+                        ..Default::default()
+                    });
+                }
             }
+
             for parameter in property.params {
                 if parameter.name.is_none() {
                     let line = parameter.name_raw.location_line() - 1;
