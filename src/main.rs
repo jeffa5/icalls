@@ -141,10 +141,6 @@ fn connect(stdio: bool) -> (lsp_types::InitializeParams, Connection, IoThreads) 
     if !init_opts.enable_hover.unwrap_or(true) {
         caps.hover_provider = None;
     }
-    if !init_opts.enable_code_actions.unwrap_or(true) {
-        caps.code_action_provider = None;
-        caps.execute_command_provider = None;
-    }
     let init_result = InitializeResult {
         capabilities: caps,
         server_info: Some(ServerInfo {
@@ -161,7 +157,6 @@ fn connect(stdio: bool) -> (lsp_types::InitializeParams, Connection, IoThreads) 
 
 struct Server {
     open_files: OpenFiles,
-    diagnostics: Vec<Diagnostic>,
     shutdown: bool,
 }
 
@@ -169,35 +164,12 @@ struct Server {
 struct InitializationOptions {
     enable_completion: Option<bool>,
     enable_hover: Option<bool>,
-    enable_code_actions: Option<bool>,
 }
 
 impl Server {
-    fn new(c: &Connection, params: lsp_types::InitializeParams) -> Self {
-        let init_opts = if let Some(io) = params.initialization_options {
-            match serde_json::from_value::<InitializationOptions>(io) {
-                Ok(v) => v,
-                Err(err) => {
-                    notify(
-                        c,
-                        ShowMessage::METHOD,
-                        format!("Invalid initialization options: {err}"),
-                    );
-                    panic!("Invalid initialization options: {err}")
-                }
-            }
-        } else {
-            notify(
-                c,
-                ShowMessage::METHOD,
-                "No initialization options given, need it for vcard directory location at least",
-            );
-            panic!("No initialization options given, need it for vcard directory location at least")
-        };
-
+    fn new(_c: &Connection, _params: lsp_types::InitializeParams) -> Self {
         Self {
             open_files: OpenFiles::default(),
-            diagnostics: Vec::new(),
             shutdown: false,
         }
     }
@@ -223,12 +195,6 @@ impl Server {
                         lsp_types::request::Completion::METHOD => self.handle_completion_request(r),
                         lsp_types::request::ResolveCompletionItem::METHOD => {
                             self.handle_resolve_completion_item_request(r)
-                        }
-                        lsp_types::request::CodeActionRequest::METHOD => {
-                            self.handle_code_action_request(r)
-                        }
-                        lsp_types::request::ExecuteCommand::METHOD => {
-                            self.handle_execute_command_request(r)
                         }
                         lsp_types::request::Shutdown::METHOD => {
                             self.shutdown = true;
@@ -489,32 +455,6 @@ impl Server {
         vec![response]
     }
 
-    fn handle_code_action_request(&mut self, request: Request) -> Vec<Message> {
-        let cap = serde_json::from_value::<lsp_types::CodeActionParams>(request.params).unwrap();
-
-        // let action_list = Vec::new();
-        // let response = response_ok(request.id, action_list);
-
-        vec![]
-    }
-
-    fn handle_execute_command_request(&mut self, request: Request) -> Vec<Message> {
-        let cap =
-            serde_json::from_value::<lsp_types::ExecuteCommandParams>(request.params).unwrap();
-
-        let mut messages = Vec::new();
-        let response = match cap.command.as_str() {
-            _ => response_err(
-                request.id,
-                ErrorCode::InvalidRequest as i32,
-                String::from("unknown command"),
-            ),
-        };
-        messages.push(response);
-
-        messages
-    }
-
     fn handle_did_open_text_document_notification(
         &mut self,
         notification: Notification,
@@ -583,18 +523,6 @@ impl Server {
         //         dctdp.text_document.uri
         //     ),
         // );
-    }
-
-    fn get_word_from_document(
-        &mut self,
-        tdp: &lsp_types::TextDocumentPositionParams,
-    ) -> Option<String> {
-        let content = self.open_files.get(tdp.text_document.uri.as_ref());
-        get_word_from_content(
-            content,
-            tdp.position.line as usize,
-            tdp.position.character as usize,
-        )
     }
 
     fn refresh_diagnostics(&mut self, file: &str) -> Vec<Diagnostic> {
@@ -713,51 +641,6 @@ impl Server {
 
         diagnostics
     }
-}
-
-fn get_word_from_content(content: &str, line: usize, character: usize) -> Option<String> {
-    let line = content.lines().nth(line)?;
-    let word = get_word_from_line(line, character)?;
-    Some(word)
-}
-
-const EMAIL_PUNC: &str = "._%+-@";
-
-fn get_word_from_line(line: &str, character: usize) -> Option<String> {
-    let mut current_word = String::new();
-    let mut found = false;
-    let mut match_chars = EMAIL_PUNC.to_owned();
-    let word_char = |match_with: &str, c: char| c.is_alphanumeric() || match_with.contains(c);
-    for (i, c) in line.chars().enumerate() {
-        if word_char(&match_chars, c) {
-            current_word.push(c);
-        } else {
-            if found {
-                return Some(current_word);
-            }
-            current_word.clear();
-        }
-
-        if i == character {
-            if word_char(&match_chars, c) {
-                match_chars.push(' ');
-                found = true
-            } else {
-                return None;
-            }
-        }
-
-        if !word_char(&match_chars, c) && found {
-            return Some(current_word);
-        }
-    }
-
-    // got to end of line
-    if found {
-        return Some(current_word);
-    }
-
-    None
 }
 
 fn main() {

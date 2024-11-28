@@ -45,8 +45,7 @@ Capabilities are all enabled by default, but can be disabled in the `initializat
 ```json
 {
   "enable_completion": false,
-  "enable_hover": false,
-  "enable_code_actions": false
+  "enable_hover": false
 }
 ```
 
