@@ -1,6 +1,7 @@
 use clap::Parser;
 use icalls::ast;
 use icalls::ast::parse_properties;
+use icalls::ast::parse_value;
 use icalls::ast::SyntaxKind;
 use icalls::parameters::Parameter;
 use icalls::properties::Property;
@@ -327,6 +328,47 @@ impl Server {
                         return vec![response_ok(request.id, resp)];
                     } else {
                         break 'outer;
+                    }
+                }
+            }
+
+            if let Some(value) = property.value {
+                let ns = value.get_utf8_column() - 1;
+                let nl = value.fragment().len();
+                if (ns..(ns + nl)).contains(&(tdp.position.character as usize)) {
+                    if let Some(name) = property.name {
+                        match parse_value(value, name.to_property().value_type()) {
+                            Ok((_, v)) => {
+                                return vec![response_ok(
+                                    request.id,
+                                    lsp_types::Hover {
+                                        contents: lsp_types::HoverContents::Markup(
+                                            lsp_types::MarkupContent {
+                                                kind: lsp_types::MarkupKind::Markdown,
+                                                value: v.prettify(),
+                                            },
+                                        ),
+                                        range: None,
+                                    },
+                                )];
+                            }
+                            Err(e) => {
+                                return vec![response_ok(
+                                    request.id,
+                                    lsp_types::Hover {
+                                        contents: lsp_types::HoverContents::Markup(
+                                            lsp_types::MarkupContent {
+                                                kind: lsp_types::MarkupKind::Markdown,
+                                                value: e.to_string(),
+                                            },
+                                        ),
+                                        range: None,
+                                    },
+                                )];
+                            }
+                        }
+                    } else {
+                        break;
                     }
                 }
             }

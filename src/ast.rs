@@ -1,10 +1,13 @@
 use std::str::FromStr;
 
+use nom::bytes::complete::take;
 use nom::bytes::complete::{tag, take_till, take_while};
 use nom::character::complete::line_ending;
-use nom::combinator::{opt, peek};
+use nom::combinator::{map, map_res, opt, peek};
 use nom::IResult;
 use nom_locate::LocatedSpan;
+
+use crate::value::{Date, Time, Value, ValueType};
 
 type Span<'a> = LocatedSpan<&'a str>;
 
@@ -421,6 +424,77 @@ fn parse_parameter(s: Span) -> IResult<Span, Parameter> {
             name_raw: param_name,
             name: ParameterName::from_str(param_name.fragment()).ok(),
             value: param_value,
+        },
+    ))
+}
+
+pub fn parse_value(s: Span, typ: ValueType) -> IResult<Span, Value> {
+    let v = s.fragment();
+    match typ {
+        ValueType::Binary => Ok((s, Value::Binary(s.fragment().as_bytes().to_owned()))),
+        ValueType::Boolean => {
+            if v.to_lowercase() == "true" {
+                Ok((s, Value::Boolean(true)))
+            } else if v.to_lowercase() == "false" {
+                Ok((s, Value::Boolean(false)))
+            } else {
+                Err(nom::Err::Failure(nom::error::Error::new(
+                    s,
+                    nom::error::ErrorKind::Fail,
+                )))
+            }
+        }
+        ValueType::CalAddress => Ok((s, Value::CalAddress(v.to_string()))),
+        ValueType::Date => Ok((s, Value::Date(parse_date(s)?.1))),
+        ValueType::DateTime => {
+            let (s, date) = parse_date(s)?;
+            let (s, _) = tag("T")(s)?;
+            let (s, time) = parse_time(s)?;
+            Ok((s, Value::DateTime(date, time)))
+        }
+        ValueType::Duration => Ok((s, Value::Duration(v.to_string()))),
+        ValueType::Float => match f64::from_str(v) {
+            Ok(f) => Ok((s, Value::Float(f))),
+            Err(_) => Err(nom::Err::Failure(nom::error::Error::new(
+                s,
+                nom::error::ErrorKind::Fail,
+            ))),
+        },
+        ValueType::Integer => match i64::from_str(v) {
+            Ok(i) => Ok((s, Value::Integer(i))),
+            Err(_) => Err(nom::Err::Failure(nom::error::Error::new(
+                s,
+                nom::error::ErrorKind::Fail,
+            ))),
+        },
+        ValueType::PeriodOfTime => Ok((s, Value::PeriodOfTime(v.to_string()))),
+        ValueType::RecurrenceRule => Ok((s, Value::RecurrenceRule(v.to_string()))),
+        ValueType::Text => Ok((s, Value::Text(v.to_string()))),
+        ValueType::Time => Ok((s, Value::Time(parse_time(s)?.1))),
+        ValueType::Uri => Ok((s, Value::Uri(v.to_string()))),
+        ValueType::UtcOffset => Ok((s, Value::UtcOffset(v.to_string()))),
+    }
+}
+
+fn parse_date(s: Span) -> IResult<Span, Date> {
+    let (s, year) = map_res(take(4usize), |s: Span| s.fragment().parse())(s)?;
+    let (s, month) = map_res(take(2usize), |s: Span| s.fragment().parse())(s)?;
+    let (s, day) = map_res(take(2usize), |s: Span| s.fragment().parse())(s)?;
+    Ok((s, Date { year, month, day }))
+}
+
+fn parse_time(s: Span) -> IResult<Span, Time> {
+    let (s, hour) = map_res(take(2usize), |s: Span| s.fragment().parse())(s)?;
+    let (s, minute) = map_res(take(2usize), |s: Span| s.fragment().parse())(s)?;
+    let (s, second) = map_res(take(2usize), |s: Span| s.fragment().parse())(s)?;
+    let (s, utc) = map(opt(tag("Z")), |o| o.is_some())(s)?;
+    Ok((
+        s,
+        Time {
+            hour,
+            minute,
+            second,
+            utc,
         },
     ))
 }
